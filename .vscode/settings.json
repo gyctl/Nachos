@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "cstdio": "cpp",
+        "syscall.h": "c",
+        "filesys.h": "c"
+    }
+}

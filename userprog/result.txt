@@ -1,0 +1,42 @@
+为进程 main 分配物理页面 0
+为进程 main 分配物理页面 1
+为进程 main 分配物理页面 2
+SC_Exec
+为进程 main 分配物理页面 3
+文件名的长度为17
+就绪队列不为空
+实现抢占
+为进程 second thread 分配物理页面 4
+为进程 second thread 分配物理页面 5
+为进程 second thread 分配物理页面 6
+SC_Create
+为进程 second thread 分配物理页面 7
+已创建文件名为testcode的文件
+SC_Yield
+就绪队列不为空
+SC_Exit
+线程 second thread 结束,释放物理页面
+进程 second thread 释放物理页面 4 
+进程 second thread 释放物理页面 5 
+进程 second thread 释放物理页面 6 
+进程 second thread 释放物理页面 7 
+fork finish currentthread main
+SC_Join
+join succeed
+SC_Exit
+线程 main 结束,释放物理页面
+进程 main 释放物理页面 0 
+进程 main 释放物理页面 1 
+进程 main 释放物理页面 2 
+进程 main 释放物理页面 3 
+No threads ready or runnable, and no pending interrupts.
+Assuming the program completed.
+Machine halting!
+
+Ticks: total 740, idle 0, system 150, user 590
+Disk I/O: reads 0, writes 0
+Console I/O: reads 0, writes 0
+Paging: faults 0
+Network I/O: packets received 0, sent 0
+
+Cleaning up...
