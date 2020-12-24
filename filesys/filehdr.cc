@@ -41,13 +41,46 @@
 bool
 FileHeader::Allocate(BitMap *freeMap, int fileSize)
 { 
-    numBytes = fileSize;
+    /*numBytes = fileSize;
     numSectors  = divRoundUp(fileSize, SectorSize);
     if (freeMap->NumClear() < numSectors)
 	return FALSE;		// not enough space
 
     for (int i = 0; i < numSectors; i++)
 	dataSectors[i] = freeMap->Find();
+    return TRUE;*/
+
+    numBytes = fileSize;
+    numSectors  = divRoundUp(fileSize, SectorSize);
+    if (freeMap->NumClear() < numSectors)
+	    return FALSE;		// not enough space
+
+    int leftSector = numSectors - NumDirect;   
+    if (numSectors <= NumDirect) {          //先把直接地址分配完毕
+        for (int i = 0;i < numSectors;i++){
+            dataSectors[i] = freeMap->Find();
+        }
+    } else {
+        for (int i = 0;i < NumDirect;i++){
+            dataSectors[i] = freeMap->Find();
+        }
+    }
+    if (leftSector > 0){                   //若直接地址不够用,则使用二级索引
+        int num = divRoundUp(leftSector,NumIndex);  //需要num个二级索引
+        for (int i =0;i<num;i++){ 
+            dataSectors[NumDirect+i] = freeMap->Find();  //为每个二级索引分配一个扇区
+            int Indexnum;                               //记录此次循环需要分配多少个扇区
+            if (i == num-1) Indexnum = leftSector;      
+            else Indexnum = NumIndex;
+            int* index = new int[Indexnum];
+            for (int j = 0 ;j<Indexnum;j++){
+                index[i] = freeMap->Find();
+            } 
+            leftSector -=NumIndex;
+            synchDisk->WriteSector(dataSectors[NumDirect + i],(char*) index);
+            delete index;
+        }
+    }   
     return TRUE;
 }
 
@@ -61,9 +94,38 @@ FileHeader::Allocate(BitMap *freeMap, int fileSize)
 void 
 FileHeader::Deallocate(BitMap *freeMap)
 {
-    for (int i = 0; i < numSectors; i++) {
+    /*for (int i = 0; i < numSectors; i++) {
 	ASSERT(freeMap->Test((int) dataSectors[i]));  // ought to be marked!
 	freeMap->Clear((int) dataSectors[i]);
+    } */
+
+    int leftSectors = numSectors - NumDirect;
+    if (leftSectors <= 0){
+        for (int i = 0; i < numSectors; i++) {
+	        ASSERT(freeMap->Test((int) dataSectors[i]));  // ought to be marked!
+	        freeMap->Clear((int) dataSectors[i]);
+        }
+        return ;
+    } else {
+        for (int i = 0;i<NumDirect;i++){
+            ASSERT(freeMap->Test((int) dataSectors[i]));  // ought to be marked!
+	        freeMap->Clear((int) dataSectors[i]);
+        }
+        int num = divRoundUp(leftSectors,NumIndex);
+        for (int j = 0;j<num;j++){
+            int Indexnum ;
+            if (j == num-1) Indexnum = leftSectors;
+            else Indexnum = NumIndex;
+            char* temp = new char[Indexnum];
+            synchDisk->ReadSector(dataSectors[NumDirect+j],temp);
+            for (int i = 0;i<Indexnum;i++){
+                ASSERT(freeMap->Test((int)temp[i]));  // ought to be marked!
+	            freeMap->Clear((int)temp[i]);
+            }
+            ASSERT(freeMap->Test((int) dataSectors[NumDirect +j]));  // ought to be marked!
+	        freeMap->Clear((int) dataSectors[NumDirect + j]);
+            leftSectors -= NumIndex;
+        }
     }
 }
 
@@ -106,7 +168,21 @@ FileHeader::WriteBack(int sector)
 int
 FileHeader::ByteToSector(int offset)
 {
-    return(dataSectors[offset / SectorSize]);
+    //return(dataSectors[offset / SectorSize]);
+
+    int cur_sector = offset / SectorSize;      //所在扇区数
+    if (cur_sector < NumDirect){               //通过直接索引就可找到扇区
+        return (dataSectors[cur_sector]);
+    } else {
+        cur_sector -= NumDirect;              //去掉直接索引可找到的扇区
+        int temp =divRoundUp(cur_sector,NumIndex);   //找到所在的二级索引位置
+        char* ch = new char[SectorSize];             //记录二级索引对应的扇区中的记录
+        synchDisk->ReadSector(dataSectors[NumDirect+temp-1],ch);  //将该扇区中的所有记录读入到ch中
+        offset = (offset - NumDirect) % NumIndex;                        //找到扇区内的偏移
+        temp = (int)ch[offset-1];
+        delete ch;
+        return temp;
+    }
 }
 
 //----------------------------------------------------------------------

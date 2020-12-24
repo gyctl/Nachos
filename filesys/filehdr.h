@@ -17,8 +17,14 @@
 #include "disk.h"
 #include "bitmap.h"
 
-#define NumDirect 	((SectorSize - 2 * sizeof(int)) / sizeof(int))
-#define MaxFileSize 	(NumDirect * SectorSize)
+// #define NumDirect 	((SectorSize - 2 * sizeof(int)) / sizeof(int))
+// #define MaxFileSize 	(NumDirect * SectorSize) 
+
+#define NumTotal  ((SectorSize - 2 * sizeof(int)) / sizeof(int))
+#define NumDirect 	((SectorSize - ( 2 + NumSecondDirect ) * sizeof(int)) / sizeof(int))    //直接索引不够用.因此留出间接索引的位置
+#define MaxFileSize 	( (NumDirect +  NumSecondDirect * NumIndex)* SectorSize)
+#define NumSecondDirect 3   //二级索引节点数目
+#define NumIndex (SectorSize / sizeof(int) ) //每个二级索引节点可以存放的地址数
 
 // The following class defines the Nachos "file header" (in UNIX terms,  
 // the "i-node"), describing where on disk to find all of the data in the file.
@@ -59,7 +65,7 @@ class FileHeader {
   private:
     int numBytes;			// Number of bytes in the file
     int numSectors;			// Number of data sectors in the file
-    int dataSectors[NumDirect];		// Disk sector numbers for each data 
+    int dataSectors[NumTotal];		// Disk sector numbers for each data 
 					// block in the file
 };
 
