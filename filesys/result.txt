@@ -4,6 +4,4 @@ Disk I/O: reads 2, writes 0
 Console I/O: reads 0, writes 0
 Paging: faults 0
 Network I/O: packets received 0, sent 0
-Sequential write of 4000 byte file, in 10 byte chunks
-leftsector: 5
-直接地址不够用
+
