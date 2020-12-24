@@ -56,28 +56,37 @@ FileHeader::Allocate(BitMap *freeMap, int fileSize)
 	    return FALSE;		// not enough space
 
     int leftSector = numSectors - NumDirect;   
+    printf("leftsector: %d\n",leftSector);
     if (numSectors <= NumDirect) {          //先把直接地址分配完毕
+        printf("直接地址够用\n");
         for (int i = 0;i < numSectors;i++){
             dataSectors[i] = freeMap->Find();
         }
     } else {
+        
         for (int i = 0;i < NumDirect;i++){
             dataSectors[i] = freeMap->Find();
         }
+        printf("直接地址不够用\n");
     }
+
     if (leftSector > 0){                   //若直接地址不够用,则使用二级索引
         int num = divRoundUp(leftSector,NumIndex);  //需要num个二级索引
+        // printf("num: %d\n",num);
         for (int i =0;i<num;i++){ 
             dataSectors[NumDirect+i] = freeMap->Find();  //为每个二级索引分配一个扇区
+            // printf("dataSectors[%d]: %d\n",NumDirect+i,dataSectors[NumDirect+i]);
             int Indexnum;                               //记录此次循环需要分配多少个扇区
             if (i == num-1) Indexnum = leftSector;      
             else Indexnum = NumIndex;
+            // printf("Indexnum: %d\n",Indexnum);
             int* index = new int[Indexnum];
             for (int j = 0 ;j<Indexnum;j++){
-                index[i] = freeMap->Find();
+                index[j] = freeMap->Find();
+                // printf("index[%d]: %d",j,index[j]);
             } 
             leftSector -=NumIndex;
-            synchDisk->WriteSector(dataSectors[NumDirect + i],(char*) index);
+            synchDisk->WriteSector(dataSectors[NumDirect + i],(char*)index);
             delete index;
         }
     }   
@@ -116,15 +125,17 @@ FileHeader::Deallocate(BitMap *freeMap)
             int Indexnum ;
             if (j == num-1) Indexnum = leftSectors;
             else Indexnum = NumIndex;
-            char* temp = new char[Indexnum];
+            char* temp = new char[SectorSize];
             synchDisk->ReadSector(dataSectors[NumDirect+j],temp);
+            int *result = (int*)temp;
             for (int i = 0;i<Indexnum;i++){
-                ASSERT(freeMap->Test((int)temp[i]));  // ought to be marked!
-	            freeMap->Clear((int)temp[i]);
+                ASSERT(freeMap->Test(result[i]));  // ought to be marked!
+	            freeMap->Clear(result[i]);
             }
             ASSERT(freeMap->Test((int) dataSectors[NumDirect +j]));  // ought to be marked!
 	        freeMap->Clear((int) dataSectors[NumDirect + j]);
             leftSectors -= NumIndex;
+            delete temp;
         }
     }
 }
@@ -178,8 +189,9 @@ FileHeader::ByteToSector(int offset)
         int temp =divRoundUp(cur_sector,NumIndex);   //找到所在的二级索引位置
         char* ch = new char[SectorSize];             //记录二级索引对应的扇区中的记录
         synchDisk->ReadSector(dataSectors[NumDirect+temp-1],ch);  //将该扇区中的所有记录读入到ch中
-        offset = (offset - NumDirect) % NumIndex;                        //找到扇区内的偏移
-        temp = (int)ch[offset-1];
+        int *result = (int *)ch;
+        cur_sector = cur_sector % NumIndex;         //找到扇区内的偏移
+        temp = (int)result[cur_sector-1];
         delete ch;
         return temp;
     }
@@ -205,7 +217,48 @@ FileHeader::FileLength()
 void
 FileHeader::Print()
 {
-    int i, j, k;
+
+    printf("文件大小: %dByte\n",numBytes);
+    int leftSectors = numSectors - NumDirect;
+    if (numSectors <= NumDirect) {
+        printf("直接索引节点指向的扇区: ");
+        for (int i=0;i<numSectors;i++){
+            printf("%d ",dataSectors[i]);
+        }
+        printf("\n");
+        return ;
+    } else {
+        printf("直接索引节点指向的扇区: \n");
+        for (int i=0;i<NumDirect;i++){
+            printf("%d ",dataSectors[i]);
+            if (i % 15 == 0 && i!=0) printf("\n");
+        }
+        printf("\n");
+    }
+    int num = divRoundUp(leftSectors,NumIndex);
+    for (int i=0;i<num;i++){
+        printf("\n二级索引节点 %d 的扇区号为 %d\n",i,dataSectors[NumDirect+i]);
+
+        int Indexnum;
+        if (i == num-1) Indexnum = leftSectors;
+        else Indexnum = NumIndex;
+
+        char *temp = new char[SectorSize];
+        synchDisk->ReadSector(dataSectors[NumDirect+i],temp);
+        int * result = (int *)temp;
+        printf("\n");
+        printf("二级索引节点 %d 包含的扇区: \n",i);
+        for (int j = 0;j<Indexnum;j++){
+            printf("%d  ",result[j]);
+            if (j %15 == 0 && j!=0)  printf("\n");
+        }
+        delete temp;
+        leftSectors -= NumIndex;
+    }
+
+
+
+   /* int i, j, k;
     char *data = new char[SectorSize];
 
     printf("FileHeader contents.  File size: %d.  File blocks:\n", numBytes);
@@ -223,4 +276,5 @@ FileHeader::Print()
         printf("\n"); 
     }
     delete [] data;
+    */
 }

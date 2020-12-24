@@ -131,8 +131,11 @@ BitMap::Print()
 {
     printf("Bitmap set:\n"); 
     for (int i = 0; i < numBits; i++)
-	if (Test(i))
-	    printf("%d, ", i);
+	if (Test(i)){
+        printf("%d, ", i);
+        if (i%15 == 0 && i!=0) printf("\n");
+    }
+	    
     printf("\n"); 
 }
 
