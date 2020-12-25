@@ -20,8 +20,8 @@
 // #define NumDirect 	((SectorSize - 2 * sizeof(int)) / sizeof(int))
 // #define MaxFileSize 	(NumDirect * SectorSize) 
 
-#define NumTotal  ((SectorSize - 2 * sizeof(int)) / sizeof(int))
-#define NumDirect 	((SectorSize - ( 2 + NumSecondDirect ) * sizeof(int)) / sizeof(int))    //直接索引不够用.因此留出间接索引的位置
+#define NumTotal  ((SectorSize - 2 * sizeof(int) - 96) / sizeof(int))     
+#define NumDirect 	((SectorSize - ( 2 + NumSecondDirect ) * sizeof(int) - 96) / sizeof(int))    //直接索引不够用.因此留出间接索引的位置
 #define MaxFileSize 	( (NumDirect +  NumSecondDirect * NumIndex)* SectorSize)
 #define NumSecondDirect 3   //二级索引节点数目
 #define NumIndex (SectorSize / sizeof(int) ) //每个二级索引节点可以存放的地址数
@@ -59,12 +59,16 @@ class FileHeader {
 
     int FileLength();			// Return the length of the file 
 					// in bytes
-
+    bool Append(BitMap *freeMap,int bytes);
     void Print();			// Print the contents of the file.
+    char path[20];
 
   private:
     int numBytes;			// Number of bytes in the file
     int numSectors;			// Number of data sectors in the file
+    char creat_time[25];
+    char visit_time[25];
+    char modified_time[25];
     int dataSectors[NumTotal];		// Disk sector numbers for each data 
 					// block in the file
 };

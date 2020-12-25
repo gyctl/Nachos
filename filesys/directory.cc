@@ -24,6 +24,7 @@
 #include "utility.h"
 #include "filehdr.h"
 #include "directory.h"
+#include "filesys.h"
 
 //----------------------------------------------------------------------
 // Directory::Directory
@@ -76,6 +77,7 @@ Directory::FetchFrom(OpenFile *file)
 void
 Directory::WriteBack(OpenFile *file)
 {
+    // printf("sizeof(DirectoryEntry) %d\n",sizeof(DirectoryEntry));
     (void) file->WriteAt((char *)table, tableSize * sizeof(DirectoryEntry), 0);
 }
 
@@ -127,18 +129,20 @@ Directory::Find(char *name)
 //----------------------------------------------------------------------
 
 bool
-Directory::Add(char *name, int newSector)
+Directory::Add(char *name, int newSector,int init)
 { 
     if (FindIndex(name) != -1)
-	return FALSE;
+	    return FALSE;
 
     for (int i = 0; i < tableSize; i++)
         if (!table[i].inUse) {
             table[i].inUse = TRUE;
             strncpy(table[i].name, name, FileNameMaxLen); 
             table[i].sector = newSector;
-        return TRUE;
-	}
+            if (init == -1) table[i].type = 'D';
+            else table[i].type = 'F';
+            return TRUE;
+	    }
     return FALSE;	// no space.  Fix when we have extensible files.
 }
 
@@ -170,8 +174,22 @@ void
 Directory::List()
 {
    for (int i = 0; i < tableSize; i++)
-	if (table[i].inUse)
-	    printf("%s\n", table[i].name);
+	if (table[i].inUse){
+        FileHeader* hdr = new FileHeader;              //此处写成FileHeader* hdr; 会报错,猜测需要new出实际的空间,才能调用FetchFrom函数
+        if (table[i].type == 'D'){
+            OpenFile* openfile = new OpenFile(table[i].sector);  
+            Directory* directory = new Directory(10);
+            directory->FetchFrom(openfile);
+            hdr->FetchFrom(table[i].sector);
+            printf("%s\n",hdr->path);
+            // printf("递归遍历文件夹\n");
+            directory->List(); 
+        } else {
+            hdr->FetchFrom(table[i].sector);
+            printf("%s\n", hdr->path);
+        }
+        
+    }    
 }
 
 //----------------------------------------------------------------------
@@ -190,9 +208,15 @@ Directory::Print()
     printf("Directory contents:\n");
     for (int i = 0; i < tableSize; i++)
 	if (table[i].inUse) {
-	    printf("Name: %s, Sector: %d\n", table[i].name, table[i].sector);
-	    hdr->FetchFrom(table[i].sector);
+        hdr->FetchFrom(table[i].sector);
+	    printf("Path: %s, Sector: %d\n", hdr->path, table[i].sector);
 	    hdr->Print();
+        if (table[i].type == 'D'){
+            OpenFile *openfile = new OpenFile(table[i].sector);
+            Directory *dir = new Directory(6);
+            dir->FetchFrom(openfile);
+            dir->Print();
+        }
 	}
     printf("\n");
     delete hdr;

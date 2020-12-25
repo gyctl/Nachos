@@ -85,8 +85,8 @@ AddrSpace::AddrSpace(OpenFile *executable)
     DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
 					numPages, size);
 // first, set up the translation 
-    fileSystem->Create("diskfile",size);    //创建一个用户程序需要大小的文件代替磁盘，将用户程序的不同段读入
-    OpenFile *file =  fileSystem->Open("diskfile");
+    fileSystem->Create("diskfile",size,"");    //创建一个用户程序需要大小的文件代替磁盘，将用户程序的不同段读入
+    OpenFile *file =  fileSystem->Open("diskfile","");
 /*将用户程序写入虚拟磁盘文件*/
     if (noffH.code.size > 0){    
         for (int i=0 ; i < noffH.code.size; i++){

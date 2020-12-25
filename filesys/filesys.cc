@@ -61,7 +61,7 @@
 // supports extensible files, the directory size sets the maximum number 
 // of files that can be loaded onto the disk.
 #define FreeMapFileSize 	(NumSectors / BitsInByte)
-#define NumDirEntries 		10
+#define NumDirEntries 		6
 #define DirectoryFileSize 	(sizeof(DirectoryEntry) * NumDirEntries)
 
 //----------------------------------------------------------------------
@@ -142,6 +142,35 @@ FileSystem::FileSystem(bool format)
     }
 }
 
+//------------------------------------------------------------------------------
+int  
+FileSystem::FindDir(char* path){
+    OpenFile *dir_file = new OpenFile(DirectorySector);  //打开根目录文件
+    Directory *dir = new Directory(NumDirEntries);       //创建一个新目录
+    int sector = 1;
+    dir->FetchFrom(dir_file);                            //将目录文件读取出来
+    int path_pos = 0;                                  //记录路径遍历位置
+    int str_pos = 0;                                  //记录字符串遍历位置
+    char* str = new char[20];           //记录遍历过的字符串
+    // if (*path=='\0') printf("@@@@@@@@@@@@@@\n");
+    while ( (*path != '\0') && path_pos < strlen(path)){
+        // printf("path_pos: %d\n",path_pos);
+        str[str_pos++] = path[path_pos++];
+        if (path[path_pos] == '/'){
+            str[str_pos] = '\0';
+            // printf("str_pos  %d\n",str_pos);
+            // printf("str====%s\n",str);
+            sector = dir->Find(str);
+            ASSERT(sector != -1);
+            dir_file = new OpenFile(sector);  //找头文件
+            dir = new Directory(NumDirEntries);     
+            dir->FetchFrom(dir_file);       //读取头文件,复制table
+            path_pos++;
+            str_pos = 0;
+        }
+    }
+    return sector;         //要创建文件的上级目录头文件的打开文件
+}
 //----------------------------------------------------------------------
 // FileSystem::Create
 // 	Create a file in the Nachos file system (similar to UNIX create).
@@ -171,43 +200,102 @@ FileSystem::FileSystem(bool format)
 //	"initialSize" -- size of file to be created
 //----------------------------------------------------------------------
 
+
+
 bool
-FileSystem::Create(char *name, int initialSize)
+FileSystem::Create(char *name, int initialSize,char* path)
 {
     Directory *directory;
     BitMap *freeMap;
     FileHeader *hdr;
     int sector;
     bool success;
-
-    DEBUG('f', "Creating file %s, size %d\n", name, initialSize);
+    if (initialSize == -1) {         //创建文件夹
+        DEBUG('f', "Creating directory %s\n", name);
+    } else {
+        DEBUG('f', "Creating file %s, size %d\n", name, initialSize);
+    }
 
     directory = new Directory(NumDirEntries);
-    directory->FetchFrom(directoryFile);
+    // directory->FetchFrom(directoryFile);
+    OpenFile* temp = new OpenFile(FindDir(path));
+    directory->FetchFrom(temp);   
+
+    // printf("directory=============================\n");
+    // directory->Print();        
+
+    char* temppath = new char[50];
+    temppath[0] = '\0';
+    strcat(temppath,path);
+    temppath[strlen(path)] = '\0';
+    // strcat(temppath,"/");
+    strcat(temppath,name);
+    int lenth = strlen(temppath);
+    temppath[lenth] = '\0';
+    // printf("temppath %s\n",temppath);
 
     if (directory->Find(name) != -1)
-      success = FALSE;			// file is already in directory
+        success = FALSE;			// file is already in directory
     else {	
         freeMap = new BitMap(NumSectors);
         freeMap->FetchFrom(freeMapFile);
         sector = freeMap->Find();	// find a sector to hold the file header
     	if (sector == -1) 		
             success = FALSE;		// no free block for file header 
-        else if (!directory->Add(name, sector))
+        else if (!directory->Add(name, sector,initialSize))        //将这个文件/目录加到对应目录下面
             success = FALSE;	// no space in directory
-	else {
+	    else {
+            
     	    hdr = new FileHeader;
-	    if (!hdr->Allocate(freeMap, initialSize))
+            strncpy(hdr->path,temppath,strlen(temppath));
+            hdr->path[strlen(temppath)] = '\0';
+            printf("hdr->path %s\n",hdr->path);
+            // printf("filesize  %d\n",initialSize);
+	        if (!hdr->Allocate(freeMap, initialSize))     //按照文件大小给其分配相应的空间,并形成索引结构
             	success = FALSE;	// no space on disk for data
-	    else {	
-	    	success = TRUE;
+	        else {	
+	    	    success = TRUE;
 		// everthing worked, flush all changes back to disk
-    	    	hdr->WriteBack(sector);      //把hdr的内容写回到sector		
-    	    	directory->WriteBack(directoryFile);    //把table的内容写回到directoryFile
+    	    	
+                // printf("@@@@@@@@@@@@@\n");
+                // hdr->Print();	
+                // printf("@@@@@@@@@@@@@\n");	
+                // printf("sector############  %d\n",sector);
+                // hdr->FetchFrom(sector);
+                // hdr->Print(); 
+    	    	// directory->WriteBack(directoryFile);    //把table的内容写回到directoryFile
+                if (initialSize == -1) {
+                    Directory *dir = new Directory(NumDirEntries);      //创建一个可以装十个子目录的目录文件
+                    OpenFile *dir_file = new OpenFile(sector);           
+                    dir->WriteBack(dir_file);
+                    // Directory *dir1 = new Directory(NumDirEntries);
+                    // dir1->FetchFrom(dir_file);
+                    // dir1->Print();
+                }
+                // hdr->Print(); 
+                // 
+                hdr->WriteBack(sector);      //把hdr的内容写回到sector
+                // directory->Print();
+                // FileHeader *hdr1 = new FileHeader; 
+                // hdr1->FetchFrom(sector);
+                // hdr1->Print();
+                directory->WriteBack(temp);    //temp是上级目录文件的头文件打开文件表
+                // Directory *directory1 = new Directory(NumDirEntries);
+                // directory1->FetchFrom(temp);
+                // directory1->Print();
+                // directory->FetchFrom(temp);
+                // directory->List();
     	    	freeMap->WriteBack(freeMapFile);        //把map内容写回到freeMapFile
-	    }
+                // printf("sector############  %d\n",sector);
+                // FileHeader *hdr1 = new FileHeader; 
+                // hdr1->FetchFrom(sector);
+                // hdr1->Print(); 
+                // printf("--------------------------------\n");
+                // directory->Print();
+                // printf("--------------------------------\n");
+	        }
             delete hdr;
-	}
+	    }
         delete freeMap;
     }
     delete directory;
@@ -225,14 +313,18 @@ FileSystem::Create(char *name, int initialSize)
 //----------------------------------------------------------------------
 
 OpenFile *
-FileSystem::Open(char *name)
+FileSystem::Open(char* name,char *path)
 { 
+
+    OpenFile* temp =new OpenFile(FindDir(path));
+
     Directory *directory = new Directory(NumDirEntries);
     OpenFile *openFile = NULL;
     int sector;
 
     DEBUG('f', "Opening file %s\n", name);
-    directory->FetchFrom(directoryFile);
+    // directory->FetchFrom(directoryFile);
+    directory->FetchFrom(temp);
     sector = directory->Find(name); 
     if (sector >= 0) 		
 	openFile = new OpenFile(sector);	// name was found in directory 
@@ -255,15 +347,17 @@ FileSystem::Open(char *name)
 //----------------------------------------------------------------------
 
 bool
-FileSystem::Remove(char *name)
+FileSystem::Remove(char *name,char* path)
 { 
     Directory *directory;
     BitMap *freeMap;
     FileHeader *fileHdr;
     int sector;
     
+    OpenFile* temp =new OpenFile(FindDir(path));
     directory = new Directory(NumDirEntries);
-    directory->FetchFrom(directoryFile);
+    // directory->FetchFrom(directoryFile);
+    directory->FetchFrom(temp);
     sector = directory->Find(name);
     if (sector == -1) {
        delete directory;
@@ -295,9 +389,12 @@ FileSystem::Remove(char *name)
 void
 FileSystem::List()
 {
+
+    // OpenFile* temp = new OpenFile(sector);
     Directory *directory = new Directory(NumDirEntries);
 
     directory->FetchFrom(directoryFile);
+    // directory->FetchFrom(temp);
     directory->List();
     delete directory;
 }

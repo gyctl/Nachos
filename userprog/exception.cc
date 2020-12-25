@@ -54,7 +54,7 @@
 //----------------------------------------------------------------------
 
 void Exec_func(char *name){
-    OpenFile *executable = fileSystem->Open(name);    //打开名为name的文件，并记录文件指针
+    OpenFile *executable = fileSystem->Open(name,"");    //打开名为name的文件，并记录文件指针
     AddrSpace *space = new AddrSpace(executable);             //为该文件申请地址空间
     currentThread->space = space;                           //将此地址空间赋值给进程的地址空间
     space->InitRegisters();  //初始化
@@ -91,7 +91,7 @@ ExceptionHandler(ExceptionType which)
         // printf("===========缺页中断发生=========\n");
         int vpn = (unsigned) machine->registers[BadVAddrReg]/PageSize ; //缺页中断发生的虚拟地址，也就是此页未找到对应的物理页面？
         int pageNum = machine->AllocatePage();            //判断内存中是否还有空间
-        OpenFile *file = fileSystem->Open("diskfile");
+        OpenFile *file = fileSystem->Open("diskfile","");
         // printf("========pagenNum%d======\n",pageNum);
         if(pageNum != -1){
             // printf("===========有空闲物理页面=========\n");
@@ -202,7 +202,7 @@ ExceptionHandler(ExceptionType which)
             machine->ReadMem(name++,1,(int *)&fileName[i]);   //将文件名写入filename
         }
         
-        fileSystem->Create(fileName,256);    //创建文件，大小为256字节
+        fileSystem->Create(fileName,256,"");    //创建文件，大小为256字节
         printf("已创建文件名为%s的文件\n",fileName);
 
         machine->PCAdvance();     //PC前进
@@ -221,7 +221,7 @@ ExceptionHandler(ExceptionType which)
         for (int i = 0;i < count; i++ ){
             machine->ReadMem(name++,1,(int *)&fileName[i]);
         }                                                            //同上等到文件名
-        OpenFile *openfile = fileSystem->Open(fileName);             //打开文件
+        OpenFile *openfile = fileSystem->Open(fileName,"");             //打开文件
         if (openfile == NULL){
             printf("file *%s* is not exit\n",fileName);
         } else {

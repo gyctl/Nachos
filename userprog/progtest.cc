@@ -28,7 +28,7 @@ void simpleThread(){
 void
 StartProcess(char *filename)
 {
-    OpenFile *executable = fileSystem->Open(filename);
+    OpenFile *executable = fileSystem->Open(filename,"");
     // OpenFile *executable1 = fileSystem->Open(filename);
     AddrSpace *space;
     // AddrSpace *space1;

@@ -143,7 +143,7 @@ main(int argc, char **argv)
 	    argCount = 2;
 	} else if (!strcmp(*argv, "-r")) {	// remove Nachos file
 	    ASSERT(argc > 1);
-	    fileSystem->Remove(*(argv + 1));
+	    fileSystem->Remove(*(argv + 1),*(argv+2));
 	    argCount = 2;
 	} else if (!strcmp(*argv, "-l")) {	// list Nachos directory
             fileSystem->List();

@@ -50,24 +50,30 @@ FileHeader::Allocate(BitMap *freeMap, int fileSize)
 	dataSectors[i] = freeMap->Find();
     return TRUE;*/
 
+    if (fileSize == -1){
+        numBytes = SectorSize;
+        numSectors = 1;
+        dataSectors[0] = freeMap->Find();
+        ASSERT(dataSectors[0] != -1);
+        return TRUE;
+    }
     numBytes = fileSize;
     numSectors  = divRoundUp(fileSize, SectorSize);
     if (freeMap->NumClear() < numSectors)
 	    return FALSE;		// not enough space
 
     int leftSector = numSectors - NumDirect;   
-    printf("leftsector: %d\n",leftSector);
+    // printf("leftsector: %d\n",leftSector);
     if (numSectors <= NumDirect) {          //先把直接地址分配完毕
-        printf("直接地址够用\n");
+        // printf("直接地址够用\n");
         for (int i = 0;i < numSectors;i++){
             dataSectors[i] = freeMap->Find();
         }
-    } else {
-        
+    } else {     
         for (int i = 0;i < NumDirect;i++){
             dataSectors[i] = freeMap->Find();
         }
-        printf("直接地址不够用\n");
+        // printf("直接地址不够用\n");
     }
 
     if (leftSector > 0){                   //若直接地址不够用,则使用二级索引
@@ -206,6 +212,45 @@ int
 FileHeader::FileLength()
 {
     return numBytes;
+}
+
+//---------------------------------------------------------------------
+bool 
+FileHeader::Append(BitMap *freeMap,int bytes){
+    int sector_num = divRoundUp(bytes,SectorSize);
+    if (freeMap->NumClear() < sector_num)
+        return FALSE;
+    if (sector_num + numSectors <= NumDirect){
+        for (int i=numSectors;i<sector_num + numSectors;i++){
+            dataSectors[i] = freeMap->Find();
+        }
+        OpenFile *freeMapFile = new OpenFile(0);
+        freeMap->WriteBack(freeMapFile);
+    } else {
+        for (int i=numSectors;i<NumDirect;i++){
+            dataSectors[i] = freeMap->Find();
+        }
+        int leftSectors = sector_num + numSectors - NumDirect;
+        int num = divRoundUp(leftSectors,NumIndex);
+        for (int i =0;i<num;i++){ 
+            dataSectors[NumDirect+i] = freeMap->Find();  //为每个二级索引分配一个扇区
+            // printf("dataSectors[%d]: %d\n",NumDirect+i,dataSectors[NumDirect+i]);
+            int Indexnum;                               //记录此次循环需要分配多少个扇区
+            if (i == num-1) Indexnum = leftSectors;      
+            else Indexnum = NumIndex;
+            // printf("Indexnum: %d\n",Indexnum);
+            int* index = new int[Indexnum];
+            for (int j = 0 ;j<Indexnum;j++){
+                index[j] = freeMap->Find();
+                // printf("index[%d]: %d",j,index[j]);
+            } 
+            leftSectors -=NumIndex;
+            synchDisk->WriteSector(dataSectors[NumDirect + i],(char*)index);
+            delete index;
+        }
+        OpenFile *freeMapFile = new OpenFile(0);
+        freeMap->WriteBack(freeMapFile);
+    }
 }
 
 //----------------------------------------------------------------------
