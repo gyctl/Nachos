@@ -49,5 +49,4 @@ class SynchDisk {
     Lock *lock;		  		// Only one read/write request
 					// can be sent to the disk at a time
 };
-
 #endif // SYNCHDISK_H

@@ -62,8 +62,8 @@ StartProcess(char *filename)
 // I/O requests wait on a Semaphore to delay until the I/O completes.
 
 static Console *console;
-static Semaphore *readAvail;
-static Semaphore *writeDone;
+static Semaphore *readAvail = new Semaphore("read avail",0);
+static Semaphore *writeDone = new Semaphore("write done",0);
 
 //----------------------------------------------------------------------
 // ConsoleInterruptHandlers
@@ -72,6 +72,46 @@ static Semaphore *writeDone;
 
 static void ReadAvail(int arg) { readAvail->V(); }
 static void WriteDone(int arg) { writeDone->V(); }
+
+//---------------------------------------------------------------------------
+class synchConsole
+{
+private:
+    Console *console;
+    Lock *lock;
+public:
+    synchConsole(char *readFile,char *writeFile);
+    ~synchConsole();
+    void putChar(char ch);
+    char getChar();
+};
+
+synchConsole::synchConsole(char *readFile,char *writeFile){
+    lock = new Lock("console");
+    console = new Console(readFile,writeFile,ReadAvail,WriteDone,0);
+}
+
+synchConsole::~synchConsole(){
+    delete lock;
+    delete console;
+}
+
+void
+synchConsole::putChar(char ch){
+    lock->Acquire();
+    console->PutChar(ch);
+    writeDone->P();
+    lock->Release();
+}
+
+char
+synchConsole::getChar(){
+    lock->Acquire();
+    readAvail->P();
+    char ch = console->GetChar();
+    lock->Release();
+    return ch;
+}
 
 //----------------------------------------------------------------------
 // ConsoleTest
@@ -84,15 +124,17 @@ ConsoleTest (char *in, char *out)
 {
     char ch;
 
-    console = new Console(in, out, ReadAvail, WriteDone, 0);
-    readAvail = new Semaphore("read avail", 0);
-    writeDone = new Semaphore("write done", 0);
+    synchConsole *synchconsole = new synchConsole(in, out);
+    // readAvail = new Semaphore("read avail", 0);
+    // writeDone = new Semaphore("write done", 0);
     
     for (;;) {
-	readAvail->P();		// wait for character to arrive
-	ch = console->GetChar();
-	console->PutChar(ch);	// echo it!
-	writeDone->P() ;        // wait for write to finish
+	// readAvail->P();		// wait for character to arrive
+	// ch = console->GetChar();
+    ch = synchconsole->getChar();
+    synchconsole->putChar(ch);
+	// console->PutChar(ch);	// echo it!
+	// writeDone->P() ;        // wait for write to finish
 	if (ch == 'q') return;  // if q, quit
     }
 }
