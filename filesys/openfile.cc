@@ -29,8 +29,10 @@
 
 OpenFile::OpenFile(int sector)
 { 
+    num_Reader[sector]++;
     hdr = new FileHeader;
     hdr->FetchFrom(sector);
+    hdr->sector_pos = sector;
     seekPosition = 0;
 }
 
@@ -41,6 +43,7 @@ OpenFile::OpenFile(int sector)
 
 OpenFile::~OpenFile()
 {
+    num_Reader[hdr->sector_pos]--;
     delete hdr;
 }
 
@@ -74,16 +77,21 @@ OpenFile::Seek(int position)
 int
 OpenFile::Read(char *into, int numBytes)
 {
+    ReadBegin(hdr->sector_pos);
    int result = ReadAt(into, numBytes, seekPosition);
    seekPosition += result;
+   ReadEnd(hdr->sector_pos);
    return result;
 }
 
 int
 OpenFile::Write(char *into, int numBytes)
 {
+    WriteBegin(hdr->sector_pos);
+    hdr->set_Modified_time();
    int result = WriteAt(into, numBytes, seekPosition);
    seekPosition += result;
+   WriteEnd(hdr->sector_pos);
    return result;
 }
 
@@ -151,16 +159,16 @@ OpenFile::WriteAt(char *from, int numBytes, int position)
     bool firstAligned, lastAligned;
     char *buf;
 
-    if ((numBytes <= 0) || (position >= fileLength))
+    if (numBytes <= 0) 
 	    return 0;				// check request
-    if ((position + numBytes) > fileLength){
+    if (position >= fileLength){
         // numBytes = fileLength - position;
+        printf("文件扩充\n");
         BitMap* freeMap = new BitMap(NumSectors);
         OpenFile* freeMapFile = new OpenFile(0);
         freeMap->FetchFrom(freeMapFile);
-        hdr->Append(freeMap,position + numBytes - fileLength);
+        hdr->Append(freeMap,position + numBytes);
     }
-	
     DEBUG('f', "Writing %d bytes at %d, from file of length %d.\n", 	
 			numBytes, position, fileLength);
 

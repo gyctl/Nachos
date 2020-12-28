@@ -170,23 +170,33 @@ FileRead()
 }
 
 void
+Function(int a){
+    fileSystem->Open("file1","");
+    fileSystem->Remove("file1","");
+}
+
+void
 PerformanceTest()
 {
     printf("Starting file system performance test:\n");
-    stats->Print();
-    fileSystem->Create("D1",-1,"");
-    fileSystem->Create("D2",-1,"");
-    fileSystem->Create("D3",-1,"");
+    // stats->Print();
+    // fileSystem->Create("D1",-1,"");
+    // fileSystem->Create("D2",-1,"");
+    // fileSystem->Create("D3",-1,"");
     
-    fileSystem->Create("D3",-1,"D1/");
-    fileSystem->Create("file2",40,"D1/D3/");
+    // fileSystem->Create("D3",-1,"D1/");
+    // fileSystem->Create("file2",40,"D1/D3/");
 
+    fileSystem->Create("file1",100,"");
+    fileSystem->Open("file1","");
+    Thread *thread1 = new Thread("test",4);
+    thread1->Fork(Function,1);
     // FileWrite();
     // FileRead();
     // if (!fileSystem->Remove(FileName)) {
     //   printf("Perf test: unable to remove %s\n", FileName);
     //   return;
     // }
-    stats->Print();
+    // stats->Print();
 }
 

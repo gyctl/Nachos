@@ -91,6 +91,38 @@ BitMap::Test(int which)
 //	If no bits are clear, return -1.
 //----------------------------------------------------------------------
 
+//----------------------------------------------------------------------
+int
+BitMap::FindSeq(int num){
+    int count = 0;
+    int ans = -1;
+    for (int i = 0;i<numBits;i++){
+        if (i == 0){
+            if (!Test(i)){
+                count++;
+                ans = i;
+            }              
+        } else if (!Test(i)){
+            if (!Test(i-1)){
+                count++;
+                if (i == numBits -1){
+                    if (count >= num){
+                        return ans;
+                    }
+                }
+            } else {
+                if (count >= num){
+                    return ans;
+                } else {
+                    count = 1;
+                    ans = i ;
+                }
+            }
+        } else count = 0;
+    }
+    return -1;
+}
+//-----------------------------------------------------------------------
 int 
 BitMap::Find() 
 {

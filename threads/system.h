@@ -32,6 +32,13 @@ extern void RecyclePid(int pid_num);   //CHANGE recycle  pid
 
 extern void TS();  //CHANGE print info of all thread
     
+extern int num_Reader[1024];
+extern Semaphore *sector_mutex[1024];
+extern Semaphore *num_mutex;
+extern void ReadBegin(int sector);
+extern void ReadEnd(int sector);
+extern void WriteBegin(int sector);
+extern void WriteEnd(int sector);
 
 // Initialization and cleanup routines
 extern void Initialize(int argc, char **argv); 	// Initialization,

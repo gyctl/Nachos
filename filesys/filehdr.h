@@ -23,7 +23,7 @@
 #define NumTotal  ((SectorSize - 2 * sizeof(int) - 96) / sizeof(int))     
 #define NumDirect 	((SectorSize - ( 2 + NumSecondDirect ) * sizeof(int) - 96) / sizeof(int))    //直接索引不够用.因此留出间接索引的位置
 #define MaxFileSize 	( (NumDirect +  NumSecondDirect * NumIndex)* SectorSize)
-#define NumSecondDirect 3   //二级索引节点数目
+#define NumSecondDirect 2   //二级索引节点数目
 #define NumIndex (SectorSize / sizeof(int) ) //每个二级索引节点可以存放的地址数
 
 // The following class defines the Nachos "file header" (in UNIX terms,  
@@ -61,14 +61,19 @@ class FileHeader {
 					// in bytes
     bool Append(BitMap *freeMap,int bytes);
     void Print();			// Print the contents of the file.
+    void set_Creat_time();
+    void set_Visit_time();
+    void set_Modified_time();
+
     char path[20];
+    int sector_pos;
 
   private:
     int numBytes;			// Number of bytes in the file
     int numSectors;			// Number of data sectors in the file
     char creat_time[25];
     char visit_time[25];
-    char modified_time[25];
+    char modified_time[25];  
     int dataSectors[NumTotal];		// Disk sector numbers for each data 
 					// block in the file
 };

@@ -19,6 +19,41 @@ Statistics *stats;			// performance metrics
 Timer *timer;				// the hardware timer device,
 					// for invoking context switches
 
+Semaphore *num_mutex;
+Semaphore *sector_mutex[1024];
+int num_Reader[1024];
+
+void
+ReadBegin(int sector){
+    num_mutex->P();
+    num_Reader[sector]++;
+    if (num_Reader[sector] == 1 ){
+        sector_mutex[sector]->P();
+    }
+    num_mutex->V();
+}
+void
+ReadEnd(int sector){
+    num_mutex->P();
+    num_Reader[sector]--;
+    if (num_Reader[sector] == 0){
+        sector_mutex[sector]->V();
+    }
+    num_mutex->V();
+}
+
+
+void
+WriteBegin(int sector){
+    sector_mutex[sector]->P();
+}
+
+void
+WriteEnd(int sector){
+    sector_mutex[sector]->V();
+}
+
+
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
 #endif
@@ -38,8 +73,6 @@ PostOffice *postOffice;
 
 // External definition, to allow us to take a pointer to this function
 extern void Cleanup();
-
-
 
 //CHANGE
 int thread_PID[MAXTHREAD];        

@@ -26,6 +26,9 @@
 
 #include "system.h"
 #include "filehdr.h"
+#include "time.h"
+#include "string.h"
+#include "stdio.h"
 
 //----------------------------------------------------------------------
 // FileHeader::Allocate
@@ -61,6 +64,53 @@ FileHeader::Allocate(BitMap *freeMap, int fileSize)
     numSectors  = divRoundUp(fileSize, SectorSize);
     if (freeMap->NumClear() < numSectors)
 	    return FALSE;		// not enough space
+
+    int flag = freeMap->FindSeq(numSectors);
+    if (flag != -1){
+        printf("可分配连续空间\n");
+        int leftSector = numSectors - NumDirect;   
+        // printf("leftsector: %d\n",leftSector);
+        if (numSectors <= NumDirect) {          //先把直接地址分配完毕
+            // printf("直接地址够用\n");
+            for (int i = 0;i < numSectors;i++){
+                dataSectors[i] = flag;
+                freeMap->Mark(flag);
+                flag++;
+            }
+        } else {     
+            for (int i = 0;i < NumDirect;i++){
+                dataSectors[i] = flag;
+                freeMap->Mark(flag);
+                flag++;
+            }
+            // printf("直接地址不够用\n");
+        }
+        if (leftSector > 0){                   //若直接地址不够用,则使用二级索引
+            int num = divRoundUp(leftSector,NumIndex);  //需要num个二级索引
+            // printf("num: %d\n",num);
+            for (int i =0;i<num;i++){ 
+                dataSectors[NumDirect+i] = flag;  //为每个二级索引分配一个扇区
+                freeMap->Mark(flag);
+                flag++;
+                // printf("dataSectors[%d]: %d\n",NumDirect+i,dataSectors[NumDirect+i]);
+                int Indexnum;                               //记录此次循环需要分配多少个扇区
+                if (i == num-1) Indexnum = leftSector;      
+                else Indexnum = NumIndex;
+                // printf("Indexnum: %d\n",Indexnum);
+                int* index = new int[Indexnum];
+                for (int j = 0 ;j<Indexnum;j++){
+                    index[j] = flag;
+                    freeMap->Mark(flag);
+                    flag++;
+                    // printf("index[%d]: %d",j,index[j]);
+                } 
+                leftSector -=NumIndex;
+                synchDisk->WriteSector(dataSectors[NumDirect + i],(char*)index);
+                delete index;
+            }
+        } 
+        return TRUE;
+    }
 
     int leftSector = numSectors - NumDirect;   
     // printf("leftsector: %d\n",leftSector);
@@ -218,19 +268,18 @@ FileHeader::FileLength()
 bool 
 FileHeader::Append(BitMap *freeMap,int bytes){
     int sector_num = divRoundUp(bytes,SectorSize);
-    if (freeMap->NumClear() < sector_num)
+    if (freeMap->NumClear() < sector_num - numSectors)
         return FALSE;
-    if (sector_num + numSectors <= NumDirect){
-        for (int i=numSectors;i<sector_num + numSectors;i++){
+    if (sector_num <= NumDirect){
+        for (int i=numSectors;i<sector_num;i++){
             dataSectors[i] = freeMap->Find();
         }
-        OpenFile *freeMapFile = new OpenFile(0);
-        freeMap->WriteBack(freeMapFile);
-    } else {
+        
+    } else  if (numSectors <= NumDirect && sector_num > NumDirect) {      //扩展的文件需要增加二级目录
         for (int i=numSectors;i<NumDirect;i++){
             dataSectors[i] = freeMap->Find();
         }
-        int leftSectors = sector_num + numSectors - NumDirect;
+        int leftSectors = sector_num - NumDirect;           //需要分配到二级索引的扇区数
         int num = divRoundUp(leftSectors,NumIndex);
         for (int i =0;i<num;i++){ 
             dataSectors[NumDirect+i] = freeMap->Find();  //为每个二级索引分配一个扇区
@@ -248,9 +297,14 @@ FileHeader::Append(BitMap *freeMap,int bytes){
             synchDisk->WriteSector(dataSectors[NumDirect + i],(char*)index);
             delete index;
         }
-        OpenFile *freeMapFile = new OpenFile(0);
-        freeMap->WriteBack(freeMapFile);
+        // OpenFile *freeMapFile = new OpenFile(0);
+        // freeMap->WriteBack(freeMapFile);
     }
+    numSectors = sector_num;
+    numBytes = bytes;
+    printf("文件大小%d\n",numBytes);
+    OpenFile *freeMapFile = new OpenFile(0);
+    freeMap->WriteBack(freeMapFile);
 }
 
 //----------------------------------------------------------------------
@@ -322,4 +376,31 @@ FileHeader::Print()
     }
     delete [] data;
     */
+}
+
+void
+FileHeader::set_Creat_time(){
+    time_t stime;
+    time(&stime);
+    strncpy(creat_time,asctime(gmtime(&stime)),25);
+    creat_time[24] = '\0';
+    printf("文件 %s 的创建时间  %s\n",path,creat_time);
+}
+
+void 
+FileHeader::set_Visit_time(){
+    time_t stime;
+    time(&stime);
+    strncpy(visit_time,asctime(gmtime(&stime)),25);
+    visit_time[24] = '\0';
+    printf("文件 %s 的上次访问时间  %s\n",path,visit_time);
+}
+
+void
+FileHeader::set_Modified_time(){
+    time_t stime;
+    time(&stime);
+    strncpy(modified_time,asctime(gmtime(&stime)),25);
+    modified_time[24] = '\0';
+    printf("文件 %s 的上次修改时间  %s\n",path,modified_time);
 }

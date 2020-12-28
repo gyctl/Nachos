@@ -45,7 +45,7 @@ class FileSystem {
   public:
     FileSystem(bool format) {}
 
-    bool Create(char *name, int initialSize) { 
+    bool Create(char *name, int initialSize,char *path) { 
 	int fileDescriptor = OpenForWrite(name);
 
 	if (fileDescriptor == -1) return FALSE;
@@ -53,7 +53,7 @@ class FileSystem {
 	return TRUE; 
 	}
 
-    OpenFile* Open(char *name) {
+    OpenFile* Open(char *name,char *path) {
 	  int fileDescriptor = OpenForReadWrite(name, FALSE);
 
 	  if (fileDescriptor == -1) return NULL;

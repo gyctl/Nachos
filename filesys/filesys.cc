@@ -50,6 +50,7 @@
 #include "directory.h"
 #include "filehdr.h"
 #include "filesys.h"
+#include "system.h"
 
 // Sectors containing the file headers for the bitmap of free sectors,
 // and the directory of files.  These file headers are placed in well-known 
@@ -80,6 +81,15 @@
 FileSystem::FileSystem(bool format)
 { 
     DEBUG('f', "Initializing the file system.\n");
+
+    num_mutex = new Semaphore("num_mutex",1);
+    for (int i = 0;i<1024;i++){
+        sector_mutex[i] = new Semaphore("sector",1);
+        num_Reader[i] = 0;
+    }
+
+
+
     if (format) {
         BitMap *freeMap = new BitMap(NumSectors);
         Directory *directory = new Directory(NumDirEntries);
@@ -316,6 +326,7 @@ OpenFile *
 FileSystem::Open(char* name,char *path)
 { 
 
+    printf("打开文件 %s\n",name);
     OpenFile* temp =new OpenFile(FindDir(path));
 
     Directory *directory = new Directory(NumDirEntries);
@@ -349,6 +360,7 @@ FileSystem::Open(char* name,char *path)
 bool
 FileSystem::Remove(char *name,char* path)
 { 
+    printf("准备删除文件 %s \n",name);
     Directory *directory;
     BitMap *freeMap;
     FileHeader *fileHdr;
@@ -359,6 +371,12 @@ FileSystem::Remove(char *name,char* path)
     // directory->FetchFrom(directoryFile);
     directory->FetchFrom(temp);
     sector = directory->Find(name);
+
+    if (num_Reader[sector] > 0){
+        printf("文件处于打开状态,无法删除\n");
+        return FALSE;
+    }
+
     if (sector == -1) {
        delete directory;
        return FALSE;			 // file not found 
