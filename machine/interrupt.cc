@@ -301,16 +301,16 @@ Interrupt::CheckIfDue(bool advanceClock)
     if (DebugIsEnabled('i'))
 	DumpState();
     PendingInterrupt *toOccur = 
-		(PendingInterrupt *)pending->SortedRemove(&when);
+		(PendingInterrupt *)pending->SortedRemove(&when);     //找下一个中断，用when记录发生时间
 
     if (toOccur == NULL)		// no pending interrupts
 	return FALSE;			
 
     if (advanceClock && when > stats->totalTicks) {	// advance the clock
 	stats->idleTicks += (when - stats->totalTicks);
-	stats->totalTicks = when;
+	stats->totalTicks = when;                               //系统时钟快进到下一个中断的时间
     } else if (when > stats->totalTicks) {	// not time yet, put it back
-	pending->SortedInsert(toOccur, when);
+	pending->SortedInsert(toOccur, when);                    //标志未设置，将取出的中断放回原处
 	return FALSE;
     }
 

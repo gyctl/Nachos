@@ -9,7 +9,7 @@ int main(){
     
     Fork(func);
     // func();
-    Yield();
+    // Yield();
     Exit(0);
 }
 

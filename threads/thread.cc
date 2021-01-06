@@ -236,7 +236,7 @@ Thread::Yield ()
 	        scheduler->Run(nextThread);
         }
     }
-    (void) interrupt->SetLevel(oldLevel);    //开中断
+    (void) i nterrupt->SetLevel(oldLevel);   //开中断
 }
 
 //----------------------------------------------------------------------
